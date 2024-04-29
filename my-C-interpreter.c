@@ -5,12 +5,14 @@
 #include <memory.h>
 #include <string.h>
 
+#define int long long
+
 int token;            // current token
 char *src, *old_src;  // pointer to source code string;
 int poolsize;         // default size of text/data/stack
 int line;             // line number
 
-int *text, old_text; // text segment and for dump text segment
+int *text, *old_text; // text segment and for dump text segment
 int *stack;           // stack
 char *data;           // data segment
 
@@ -42,6 +44,7 @@ int eval() {
     int op, *tmp;
     while(1)
     {
+        op = *pc++;
         if(op == IMM)
         {
             ax = *pc++;             /* load immediate value  to ax*/
@@ -64,8 +67,8 @@ int eval() {
         }
         else if(op == PUSH)
         {
-            --sp;                   /* push the value of ax onto the stack */
-            *sp = ax;
+            --sp;
+            *sp = ax;                  /* push the value of ax onto the stack */
         }
         else if(op == JMP)
         {
@@ -84,10 +87,6 @@ int eval() {
             *--sp = (int)(pc + 1);     /*call subroutine*/
             pc = (int *)*pc;
         }
-        // else if(op == RET)
-        // {
-        //     pc = (int *)*sp++;     /* return from subroutine */
-        // }
         else if(op == ENT)
         {
             *--sp = (int)bp;          /* make new stack frame*/
@@ -103,6 +102,68 @@ int eval() {
             sp = bp;                  /* restore call frame and PC */
             bp = (int *)*sp++;
             pc = (int *)*sp++;
+        }
+        else if(op == LEA)
+        {
+            ax = (int)(bp + *pc++);   /* load address for arguments */
+        }
+
+        /* operator */
+        else if(op == OR) ax = *sp++ | ax;
+        else if(op == XOR) ax = *sp++ ^ ax;
+        else if(op == AND) ax = *sp++ & ax;
+        else if(op == EQ) ax = *sp++ == ax;
+        else if (op == NE)  ax = *sp++ != ax;
+        else if (op == LT)  ax = *sp++ < ax;
+        else if (op == LE)  ax = *sp++ <= ax;
+        else if (op == GT)  ax = *sp++ >  ax;
+        else if (op == GE)  ax = *sp++ >= ax;
+        else if (op == SHL) ax = *sp++ << ax;
+        else if (op == SHR) ax = *sp++ >> ax;
+        else if (op == ADD) ax = *sp++ + ax;
+        else if (op == SUB) ax = *sp++ - ax;
+        else if (op == MUL) ax = *sp++ * ax;
+        else if (op == DIV) ax = *sp++ / ax;
+        else if (op == MOD) ax = *sp++ % ax;
+
+        else if(op == EXIT)
+        {
+            printf("exit(%d)", *sp);
+            return *sp;
+        }
+        else if(op == OPEN)
+        {
+            ax = open((char *)sp[1], sp[0]);
+        }
+        else if(op == CLOS)
+        {
+            ax = close(*sp);
+        }
+        else if(op == READ)
+        {
+            ax = read(sp[2], (char *)sp[1], *sp);
+        }
+        else if(op == PRTF)
+        {
+            tmp = sp + pc[1];
+            ax = printf((char *)tmp[-1], tmp[-2], tmp[-3], tmp[-4], tmp[-5], tmp[-6]);
+        }
+        else if(op == MALC)
+        {
+            ax = (int) malloc(*sp);
+        }
+        else if(op == MSET)
+        {
+            ax = (int) memset((char *)sp[2], sp[1], *sp);
+        }
+        else if(op == MCMP)
+        {
+            ax = memcmp((char *)sp[2], (char *)sp[1], *sp);
+        }
+        else
+        {
+            printf("unknown instruction:%d\n", op);
+            return -1;
         }
     }
     return 0;
@@ -161,6 +222,17 @@ int main(int argc, char **argv)
 
     bp = sp = (int *)((int)stack + poolsize); /* bp and sp point to the top of the stack */
     ax = 0;
+
+    i = 0;
+    text[i++] = IMM;
+    text[i++] = 10;
+    text[i++] = PUSH;
+    text[i++] = IMM;
+    text[i++] = 20;
+    text[i++] = ADD;
+    text[i++] = PUSH;
+    text[i++] = EXIT;
+    pc = text;
 
     program();
     return eval();
